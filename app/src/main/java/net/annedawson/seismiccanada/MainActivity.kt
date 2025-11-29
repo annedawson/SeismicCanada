@@ -27,24 +27,45 @@ import net.annedawson.seismiccanada.ui.viewmodel.EarthquakeViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * MainActivity is the entry point of the Android application.
+ * It inherits from ComponentActivity, which is a base class for activities that use Jetpack Compose.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // enableEdgeToEdge allows the app to draw behind the system bars (status bar, navigation bar)
         enableEdgeToEdge()
+        
+        // setContent is where we define the UI of the activity using Composable functions.
         setContent {
+            // Apply the application's theme (colors, typography, shapes)
             SeismicCanadaTheme {
+                // Call the main screen Composable
                 EarthquakeApp()
             }
         }
     }
 }
 
+/**
+ * This is the main screen of the app.
+ * It uses a ViewModel to fetch and hold the data.
+ * 
+ * @param viewModel The source of data for this screen. It's injected automatically by default.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EarthquakeApp(viewModel: EarthquakeViewModel = viewModel()) {
+    // Collect the list of earthquakes from the ViewModel. 
+    // 'collectAsState' converts the data flow into a State object that Compose can watch.
+    // Whenever the data changes, this Composable will automatically re-draw.
     val earthquakes by viewModel.earthquakes.collectAsState()
+    
+    // Observe the loading state (true if data is being fetched, false otherwise)
     val isLoading by viewModel.isLoading.collectAsState()
 
+    // Scaffold provides a standard layout structure with slots for a TopBar, FAB, etc.
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -56,18 +77,25 @@ fun EarthquakeApp(viewModel: EarthquakeViewModel = viewModel()) {
             )
         }
     ) { innerPadding ->
+        // The content of the Scaffold. 'innerPadding' ensures content isn't hidden behind the top bar.
         Column(modifier = Modifier.padding(innerPadding)) {
+            // Show the static safety information card at the top
             SafetyInfoCard()
+            
+            // Show a loading spinner if data is being fetched, otherwise show the list
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
+                // LazyColumn is an efficiently scrolling list (like RecyclerView in older Android views).
+                // It only renders the items currently visible on screen.
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // 'items' takes the list of data and a lambda to render each item
                     items(earthquakes) { earthquake ->
                         EarthquakeItem(earthquake)
                     }
@@ -77,6 +105,9 @@ fun EarthquakeApp(viewModel: EarthquakeViewModel = viewModel()) {
     }
 }
 
+/**
+ * A simple Composable that displays static safety instructions.
+ */
 @Composable
 fun SafetyInfoCard() {
     Card(
@@ -105,8 +136,14 @@ fun SafetyInfoCard() {
     }
 }
 
+/**
+ * Displays a single earthquake item in the list.
+ *
+ * @param feature The data object containing details about one earthquake.
+ */
 @Composable
 fun EarthquakeItem(feature: EarthquakeFeature) {
+    // Determine the color based on magnitude for visual urgency
     val magnitudeColor = if (feature.properties.mag >= 5.0) Color.Red else if (feature.properties.mag >= 3.0) Color(0xFFFFA500) else Color.Green.copy(alpha = 0.6f)
 
     Card(
@@ -119,6 +156,7 @@ fun EarthquakeItem(feature: EarthquakeFeature) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Display the magnitude in a colored box
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -132,6 +170,8 @@ fun EarthquakeItem(feature: EarthquakeFeature) {
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
+            
+            // Display the place and time details
             Column {
                 Text(
                     text = feature.properties.place,
@@ -155,6 +195,9 @@ fun EarthquakeItem(feature: EarthquakeFeature) {
     }
 }
 
+/**
+ * Helper function to format a timestamp (milliseconds) into a readable date string.
+ */
 fun formatTime(timeInMillis: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timeInMillis))
